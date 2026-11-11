@@ -1,0 +1,16 @@
+{
+  "name": "clankerinbox",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/ClankerInbox/clankerinbox.git" },
+  "homepage": "https://clankerinbox.com",
+  "description": "Email for coding agents on PostShiba or Cloudflare: a CLI and an importable module",
+  "type": "module",
+  "bin": { "clankerinbox": "bin/clankerinbox.js" },
+  "files": ["bin/", "src/", "cloudflare/", "index.ts", "README.md"],
+  "exports": { ".": "./index.ts" },
+  "engines": { "node": "^22.18.0 || >=23.6.0" },
+  "scripts": {
+    "test": "node --test test/*.test.ts"
+  }
+}

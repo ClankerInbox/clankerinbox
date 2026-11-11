@@ -1,0 +1,14 @@
+[Unit]
+Description=Deploy clankerinbox.com when main moves
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=clankerinbox
+Group=clankerinbox
+ExecStart=/usr/bin/node /srv/clankerinbox/current/deploy/apps-server/deploy.mjs --auto
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/clankerinbox /home/clankerinbox
+PrivateTmp=yes

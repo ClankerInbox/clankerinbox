@@ -1,0 +1,10 @@
+clankerinbox.com {
+	root * /srv/clankerinbox/current/site
+	file_server
+	header /health.json Cache-Control "no-store"
+	encode zstd gzip
+}
+
+www.clankerinbox.com {
+	redir https://clankerinbox.com{uri} permanent
+}

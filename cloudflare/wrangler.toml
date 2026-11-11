@@ -1,0 +1,51 @@
+# clankerinbox mail Worker. `clankerinbox setup` → Cloudflare → "Yes, deploy it for me" does
+# all of this for you. To do it by hand, copy this folder and run these steps in it, in order
+# (`npx wrangler login` first):
+#
+#  1. npx wrangler d1 create clankerinbox
+#     It prints a database_id. Put it below in database_id.
+#  2. Put the address the Worker sends as in SENDER and in allowed_sender_addresses below
+#     (the same address on your mail domain, for example clankerinbox@mail.example.com).
+#  3. npx wrangler d1 execute clankerinbox --remote --file=schema.sql
+#  4. npx wrangler deploy
+#     It prints the URL of the Worker (or add a custom domain: routes = [{ pattern =
+#     "clankerinbox.example.com", custom_domain = true }] above [[d1_databases]]).
+#  5. Make a long random token (for example `openssl rand -hex 32`), then:
+#     npx wrangler secret put API_TOKEN      (paste the token)
+#     The CLI reads the same token from the env var CLANKERINBOX_CF_TOKEN (setup --token-env
+#     names another one; interactive setup can save it in config.secrets.json).
+#  6. Dashboard → your domain → Email → Email Routing: turn it on for the mail domain, and add
+#     a routing rule for each inbox address (agent@…, signup@…) with the action "Send to a
+#     Worker" and this Worker. Under Settings, turn on Subaddressing, so signup+<tag>@ reaches
+#     the rule of signup@.
+#  7. Sending: on Workers Paid, run `npx wrangler email sending enable <mail domain>`. On the
+#     free plan, add each person the agent writes to under Email Routing → Destination
+#     addresses, and click the link in the mail that Cloudflare sends.
+#  8. clankerinbox setup → Cloudflare → "I deployed it before" (the mail domain, the URL and
+#     the token), or `clankerinbox setup --provider cloudflare --url … --domain … --allow …`.
+#
+# Mail larger than MAX_STORED_BYTES (default 1000000; at most 1400000, since a D1 row holds
+# 2 MB and the mail is kept as base64) keeps its headers and its text; attachments keep only
+# their name and size.
+name = "clankerinbox"
+main = "worker.ts"
+compatibility_date = "2026-11-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "clankerinbox"
+database_id = "<your database_id>"
+
+# Sending through Cloudflare Email Service. allowed_sender_addresses keeps a leaked
+# token from sending as anyone else on your domains.
+[[send_email]]
+name = "EMAIL"
+allowed_sender_addresses = ["clankerinbox@mail.example.com"]
+
+# Logs of the Worker (a mail that could not be stored, a missing API_TOKEN) in the dashboard.
+[observability]
+enabled = true
+
+[vars]
+SENDER = "clankerinbox@mail.example.com"
+RETENTION_HOURS = "168"

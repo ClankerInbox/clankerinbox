@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clankerinbox: safe email for any coding agent</title>
+<meta name="description" content="Open-source CLI that gives your coding agent email. It mails you a question and waits for your reply, and it gets sign-up codes without reading the mail. Runs on your own PostShiba or Cloudflare account.">
+<meta property="og:title" content="clankerinbox: safe email for any coding agent">
+<meta property="og:description" content="Your agent mails you the question and waits for your answer. It gets sign-up codes without ever reading the mail.">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e1420;--bg-2:#121a29;--text:#cdd6e4;--title:#e6ecf5;--mute:#7d8798;
+  --blue:#8ab4f8;--green:#9fd48a;--gold:#e8c170;
+  --border:rgba(255,255,255,0.25);--line:rgba(255,255,255,0.1);--line-2:rgba(255,255,255,0.18);
+  --btn:rgba(92,184,255,0.2);--input:rgba(255,255,255,0.06);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{font-family:var(--mono);font-size:14px;line-height:1.6;color:var(--text);background:var(--bg);-webkit-text-size-adjust:100%;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+.link{color:var(--blue);text-decoration:underline;text-underline-offset:3px}
+.link:hover{color:var(--title)}
+
+/* nav */
+.nav{position:sticky;top:0;z-index:10;background:rgba(14,20,32,.88);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:28px;height:56px}
+.brand{color:var(--title);font-weight:700;font-size:15px}
+.brand i{font-style:normal;color:var(--mute);font-weight:400}
+.nav-links{display:flex;gap:24px;margin-left:auto;color:var(--mute);font-size:13px}
+.nav-links a:hover{color:var(--title)}
+.gh{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);border-radius:3px;padding:5px 12px;font-size:13px;color:var(--text)}
+.gh:hover{border-color:var(--blue);color:var(--title)}
+.gh svg{width:15px;height:15px;fill:currentColor}
+
+/* hero */
+.hero{position:relative;padding:88px 0 72px}
+.hero::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(600px 320px at 78% 30%,rgba(138,180,248,.10),transparent 70%),
+  radial-gradient(420px 260px at 12% 0%,rgba(159,212,138,.06),transparent 70%);pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:48px;align-items:center}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--mute);border:1px solid var(--line-2);border-radius:3px;padding:3px 10px;margin-bottom:22px}
+.eyebrow b{color:var(--green);font-weight:400}
+h1{color:var(--title);font-size:42px;line-height:1.12;font-weight:700;letter-spacing:-.03em}
+h1 em{font-style:normal;color:var(--green)}
+.sub{color:var(--mute);font-size:16px;line-height:1.65;margin-top:20px;max-width:46ch}
+.sub b{color:var(--text);font-weight:400}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:inherit;font-size:14px;border-radius:3px;padding:10px 18px;border:1px solid var(--border);color:var(--text);cursor:pointer;background:none}
+.btn:hover{border-color:var(--blue);color:var(--title)}
+.btn.primary{background:var(--green);border-color:var(--green);color:#0e1420;font-weight:700}
+.btn.primary:hover{background:#b4e0a1;border-color:#b4e0a1;color:#0e1420}
+.btn svg{width:15px;height:15px;fill:currentColor}
+
+/* terminal window */
+.win{border:1px solid var(--line-2);border-radius:6px;background:var(--bg-2);overflow:hidden;box-shadow:0 24px 60px -24px rgba(0,0,0,.7)}
+.win-bar{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--line);color:var(--mute);font-size:12px}
+.dots{display:flex;gap:6px}
+.dots i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.16)}
+.win-bar .right{margin-left:auto}
+.copy{font-family:inherit;font-size:12px;background:var(--btn);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:3px 10px;cursor:pointer}
+.copy:hover{border-color:var(--blue);color:var(--title)}
+.copy.done{color:var(--green);border-color:var(--green)}
+pre{font-family:inherit;font-size:13px;line-height:1.7;padding:16px 18px;white-space:pre;overflow-x:auto;color:var(--title);scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+pre .p{color:var(--mute);user-select:none}
+pre .o{color:var(--mute)}
+pre .ok{color:var(--green)}
+pre .k{color:var(--green)}
+pre .g{color:var(--gold)}
+pre .b{color:var(--blue)}
+.hero pre{font-size:12.5px;padding:16px 14px}
+.hero .win-label{padding-left:14px}
+.win-label{padding:8px 18px 0;font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
+.win hr{border:0;border-top:1px solid var(--line)}
+
+/* facts */
+.facts{border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.facts .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 28px;padding-top:16px;padding-bottom:16px;color:var(--mute);font-size:13px}
+.facts span::before{content:"✓ ";color:var(--green)}
+
+/* sections */
+section{padding:88px 0}
+.head{max-width:60ch;margin-bottom:40px}
+h2{color:var(--title);font-size:26px;line-height:1.25;font-weight:700;letter-spacing:-.02em}
+h2::before{content:"## ";color:var(--mute);font-weight:400}
+.head p{color:var(--mute);margin-top:12px;font-size:15px}
+
+/* how it works */
+.flow{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr) 44px minmax(0,1fr);align-items:stretch}
+.step{display:flex;flex-direction:column}
+.step-n{font-size:12px;color:var(--mute);margin-bottom:10px}
+.step-n b{color:var(--green);font-weight:400}
+.step .win{flex:1;box-shadow:none}
+.arrow{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:18px;padding-top:28px}
+.mail{padding:16px 18px;font-size:13px;line-height:1.7}
+.mail .hdr{color:var(--mute);border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:12px}
+.mail .hdr b{color:var(--title);font-weight:400}
+.mail .q{color:var(--title)}
+.mail .quoted{color:var(--mute);border-left:2px solid var(--line-2);padding-left:10px;margin-top:10px}
+.mail .reply{color:var(--green);font-size:15px}
+
+/* features */
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.card{border:1px solid var(--line);border-radius:6px;background:rgba(255,255,255,.02);display:flex;flex-direction:column;overflow:hidden}
+.card:hover{border-color:var(--line-2)}
+.card-top{padding:22px 22px 18px}
+.tag{font-size:11px;color:var(--green)}
+.tag.gold{color:var(--gold)}
+.tag.blue{color:var(--blue)}
+h3{color:var(--title);font-size:16px;font-weight:700;margin-top:6px}
+.card p{color:var(--mute);margin-top:8px;font-size:13.5px}
+.card pre{border-top:1px solid var(--line);background:var(--input);margin-top:auto;font-size:12.5px}
+
+/* safety */
+.safe{background:var(--bg-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.rule{padding:22px;border-right:1px solid var(--line)}
+.rule:last-child{border-right:0}
+.rule p{color:var(--mute);margin-top:8px;font-size:13.5px}
+
+/* providers */
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.two .card-top{padding-bottom:22px}
+
+/* final */
+.final{text-align:center;padding:96px 0}
+.final h2::before{content:""}
+.final p{color:var(--mute);margin-top:12px}
+.final .win{max-width:640px;margin:32px auto 0;text-align:left}
+.final .cta{justify-content:center}
+
+footer{border-top:1px solid var(--line);color:var(--mute);font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:8px 24px;justify-content:space-between;padding-top:22px;padding-bottom:28px}
+footer nav{display:flex;gap:20px}
+
+@media (max-width:920px){
+  .hero{padding:48px 0 48px}
+  .hero .wrap{grid-template-columns:minmax(0,1fr);gap:36px}
+  h1{font-size:34px}
+  .flow{grid-template-columns:minmax(0,1fr)}
+  .arrow{padding:10px 0;transform:rotate(90deg)}
+  .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rule:nth-child(2){border-right:0}
+  .rule:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  section{padding:60px 0}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .nav .wrap{gap:14px}
+  .nav-links{gap:16px}
+  .nav-links .hide{display:none}
+  h1{font-size:29px}
+  .sub{font-size:15px}
+  h2{font-size:21px}
+  .grid,.two{grid-template-columns:minmax(0,1fr)}
+  .rules{grid-template-columns:minmax(0,1fr)}
+  .rule{border-right:0;border-bottom:1px solid var(--line)}
+  .rule:last-child{border-bottom:0}
+  pre{font-size:12px;padding:14px}
+  .final{padding:64px 0}
+}
+
+/* visuals */
+.hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.09) 1px,transparent 1px);background-size:22px 22px;-webkit-mask-image:radial-gradient(ellipse 70% 80% at 60% 40%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse 70% 80% at 60% 40%,#000 20%,transparent 75%);pointer-events:none}
+.hero-right{position:relative}
+.bot{display:block}
+.hero-right .bot{position:absolute;width:100px;right:26px;top:-73px;animation:bob 4s ease-in-out infinite}
+.final .bot{width:120px;margin:0 auto 28px}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.cursor{display:inline-block;width:8px;height:15px;background:var(--green);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.wire{position:relative;display:block;width:100%;height:0;border-top:1px dashed var(--line-2)}
+.wire i{position:absolute;top:-6px;left:0;width:14px;height:10px;border:1px solid var(--green);border-radius:1px;background:var(--bg);animation:fly 2.4s linear infinite}
+.wire i::before{content:"";position:absolute;left:2px;right:2px;top:1px;height:4px;border-bottom:1px solid var(--green);border-left:1px solid transparent;transform:skewY(0);clip-path:polygon(0 0,50% 100%,100% 0,100% 100%,0 100%)}
+.arrow:nth-of-type(4) .wire i{animation-delay:1.2s}
+@keyframes fly{0%{left:0;opacity:0}15%{opacity:1}85%{opacity:1}100%{left:calc(100% - 14px);opacity:0}}
+.phone{border-radius:22px;border-color:var(--border);border-width:2px}
+.phone .win-bar{justify-content:space-between;border-bottom:0;padding:10px 18px 2px}
+.phone .win-bar .dots{display:none}
+.phone .notch{width:54px;height:6px;border-radius:3px;background:rgba(255,255,255,.14)}
+.card-top{position:relative}
+.ico{position:absolute;top:20px;right:20px;width:38px;height:38px;border:1px solid var(--line-2);border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--green);background:rgba(159,212,138,.06)}
+.ico svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.card:nth-child(3n+2) .ico{color:var(--blue);background:rgba(138,180,248,.07)}
+.card:nth-child(3n+2) .tag{color:var(--blue)}
+.card:nth-child(3n) .ico{color:var(--gold);background:rgba(232,193,112,.07)}
+.card:nth-child(3n) .tag{color:var(--gold)}
+.card h3{padding-right:52px}
+.safe-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:28px;align-items:stretch}
+.safe-grid .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
+.safe-grid .rule:nth-child(2n){border-right:0}
+.safe-grid .rule:nth-child(-n+2){border-bottom:1px solid var(--line)}
+.gate{display:flex;flex-direction:column}
+.gate-rows{padding:8px 0;flex:1;display:flex;flex-direction:column;justify-content:space-around}
+.gate-row{display:grid;grid-template-columns:22px minmax(0,1fr);gap:2px 10px;padding:9px 18px;font-size:13px;border-bottom:1px dashed var(--line)}
+.gate-row:last-child{border-bottom:0}
+.gate-row .who{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gate-row .why{grid-column:2;color:var(--mute);font-size:12px}
+.gate-row .x{color:#e88a8a}
+.gate-row.no .who{color:var(--mute);text-decoration:line-through;text-decoration-color:rgba(232,138,138,.6)}
+.gate-row.yes{background:rgba(159,212,138,.07)}
+.gate-row.yes .v{color:var(--green)}
+.gate-row.yes .why{color:var(--green)}
+.two .card .tag{color:var(--gold)}
+.final .cta{margin-top:28px}
+@media (prefers-reduced-motion:reduce){.hero-right .bot,.cursor,.wire i{animation:none}.wire i{left:calc(50% - 7px)}}
+@media (max-width:920px){
+  .hero-right .bot{width:72px;top:-52px;right:18px}
+  .hero .wrap{gap:76px}
+  .wire{width:0;height:26px;border-top:0;border-left:1px dashed var(--line-2)}
+  .wire i{display:none}
+  .arrow{transform:none}
+  .safe-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:640px){
+  .safe-grid .rules{grid-template-columns:minmax(0,1fr)}
+  .safe-grid .rule{border-right:0;border-bottom:1px solid var(--line)}
+  .safe-grid .rule:last-child{border-bottom:0}
+}
+
+/* line breaks */
+h1,h2,h3{text-wrap:balance}
+p{text-wrap:pretty}
+.sub,.head p,.final p{text-wrap:balance}
+.head{max-width:none}
+.head p{max-width:76ch}
+@media (min-width:921px){.safe-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.safe-grid .rules{grid-template-columns:minmax(0,1fr)}
+.safe-grid .rule{border-right:0;border-bottom:1px solid var(--line);padding:18px 22px;display:grid;grid-template-columns:52px minmax(0,1fr);column-gap:8px;align-content:center}
+.safe-grid .rule:last-child{border-bottom:0}
+.safe-grid .rule .tag{grid-row:1 / span 2;padding-top:3px}
+.safe-grid .rule h3{margin-top:0}
+.safe-grid .rule p{margin-top:4px}
+.mail .hdr{font-size:12px;overflow-wrap:anywhere}
+
+/* phone pass */
+.car-dots{display:none}
+@media (max-width:640px){
+  section{padding:48px 0}
+  .hero{padding:36px 0 40px}
+  .hero .wrap{gap:68px}
+  h1{font-size:28px}
+  .sub{margin-top:14px}
+  .cta{margin-top:22px;flex-direction:column;align-items:stretch}
+  .btn{justify-content:center;padding:12px 18px}
+  .eyebrow{font-size:11px;margin-bottom:16px}
+  .facts .wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:6px;padding-top:14px;padding-bottom:14px;font-size:12.5px}
+  .head{margin-bottom:24px}
+  .head p{font-size:14px;margin-top:8px}
+  .step-n{margin-bottom:8px}
+  .wire{height:18px}
+  .arrow{padding:6px 0}
+  .mail{padding:14px}
+  .card-top{padding:18px 18px 16px}
+  .ico{top:16px;right:16px;width:34px;height:34px}
+  .rule{padding:18px}
+  .gate-row{padding:8px 14px}
+  .gate .win-bar{font-size:11px;white-space:nowrap}
+  .gate .win-bar .dots{display:none}
+  .eyebrow{display:inline-block}
+  .grid{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .grid::-webkit-scrollbar{display:none}
+  .grid .card{flex:0 0 86%;scroll-snap-align:center}
+  .grid .card pre{white-space:pre-wrap;word-break:break-word;overflow-x:visible}
+  .car-dots{display:flex;justify-content:center;gap:8px;margin-top:16px}
+  .car-dots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18)}
+  .car-dots i.on{background:var(--green)}
+  .final{padding:52px 0}
+  .final .bot{width:96px;margin-bottom:20px}
+  .final .win{margin-top:24px}
+  footer .wrap{padding-top:18px;padding-bottom:22px}
+}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><i># </i>clankerinbox</a>
+    <nav class="nav-links">
+      <a class="hide" href="#how">how it works</a>
+      <a class="hide" href="#features">commands</a>
+      <a class="hide" href="#safe">safety</a>
+      <a href="https://github.com/ClankerInbox/clankerinbox#readme">docs</a>
+    </nav>
+    <a class="gh" href="https://github.com/ClankerInbox/clankerinbox">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<main id="top">
+
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <div class="eyebrow"><b>open source</b> works with any agent that can run a shell</div>
+        <h1>Safe email for any <em>coding agent.</em></h1>
+        <p class="sub">Give your agent its own inbox. It <b>emails you when it's stuck</b>, waits for your answer, and <b>signs up for tools by itself</b>. Only people you allow can talk to it.</p>
+        <div class="cta">
+          <a class="btn primary" href="#install">Install it</a>
+          <a class="btn" href="https://github.com/ClankerInbox/clankerinbox">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.81.06 1.23.83 1.23.83.72 1.23 1.88.87 2.34.67.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0 0 8 0Z"/></svg>
+            Read the source
+          </a>
+        </div>
+      </div>
+
+      <div class="hero-right">
+      <svg class="bot" viewBox="0 0 20 15" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="0" width="1.02" height="1.02" fill="var(--gold)"/><rect x="6" y="1" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="3" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="3" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="4" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="5" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="8" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="9" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="11" y="4" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="5" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="5" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="8" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="9" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="11" y="5" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="6" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="6" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="16" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="17" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="18" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="19" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="1" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="12" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="13" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="10" width="1.02" height="1.02" fill="var(--bg)"/><rect x="16" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="17" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="18" y="10" width="1.02" height="1.02" fill="var(--bg)"/><rect x="19" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="1" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="16" y="11" width="1.02" height="1.02" fill="var(--bg)"/><rect x="17" y="11" width="1.02" height="1.02" fill="var(--bg)"/><rect x="18" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="19" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="1" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="16" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="17" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="18" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="19" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="3" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="14" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="14" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="14" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="14" width="1.02" height="1.02" fill="var(--blue)"/></svg>
+      <div class="win">
+        <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span>install</span><button class="copy right" type="button" data-copy="install-hero">copy</button></div>
+        <pre id="install-hero"><span class="p">$ </span>git clone https://github.com/ClankerInbox/clankerinbox ~/clankerinbox
+<span class="p">$ </span>cd ~/clankerinbox &amp;&amp; npm install -g .
+<span class="p">$ </span>clankerinbox setup</pre>
+        <hr>
+        <div class="win-label">then answer a few questions</div>
+        <pre><span class="o">Which mail service?</span>
+  <span class="b">›</span> PostShiba   <span class="o">an email API, on your own domain</span>
+    Cloudflare  <span class="o">free, setup deploys a Worker</span>
+<span class="o">Your email address:</span> you@example.org
+
+<span class="ok">✓</span> Sent to you@example.org
+<span class="ok">✓</span> Got your reply from you@example.org: "ok"
+<span class="ok">✓</span> Everything works.</pre>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="facts">
+    <div class="wrap">
+      <span>Zero dependencies</span>
+      <span>Node 22.18+, no build step</span>
+      <span>Your PostShiba or Cloudflare account</span>
+      <span>Nothing hosted</span>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="head">
+        <h2>how it works</h2>
+        <p>Your agent gets to a decision it shouldn't make alone, so it emails you and waits. You reply from your phone.</p>
+      </div>
+      <div class="flow">
+        <div class="step">
+          <div class="step-n"><b>01</b> agent asks, then waits</div>
+          <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span>agent</span></div>
+            <pre><span class="p">$ </span>clankerinbox ask \
+    "Ship the release?" \
+    --option "Ship it" \
+    --option Wait --wait
+<span class="ok">✓</span> Asked you@example.org
+<span class="o">⠋ The tool waits for a reply</span> <span class="cursor"></span></pre>
+          </div>
+        </div>
+        <div class="arrow"><span class="wire"><i></i></span></div>
+        <div class="step">
+          <div class="step-n"><b>02</b> you hit reply</div>
+          <div class="win phone">
+            <div class="win-bar"><span>9:41</span><span class="notch"></span><span>your inbox</span></div>
+            <div class="mail">
+              <div class="hdr"><b>Ship the release?</b><br>to agent+q4c7c52dbdd@mail.example.com</div>
+              <div class="reply">1</div>
+              <div class="quoted">Ship the release?<br><br>Reply with a number or your own answer:<br><br>1. Ship it<br>2. Wait</div>
+            </div>
+          </div>
+        </div>
+        <div class="arrow"><span class="wire"><i></i></span></div>
+        <div class="step">
+          <div class="step-n"><b>03</b> agent gets back to work</div>
+          <div class="win">
+            <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span>agent</span></div>
+            <pre><span class="ok">✓</span> Reply from you@example.org
+<span class="k">Ship it</span>
+
+<span class="o"># piped, it is JSON:</span>
+<span class="o">{"status":"answered",
+ "option":"</span><span class="k">Ship it</span><span class="o">",
+ "from":"you@example.org"}</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <h2>one command per job</h2>
+        <p>Pipe any of them and you get JSON, so your agent can read the output.</p>
+      </div>
+      <div class="grid">
+
+        <article class="card">
+          <div class="card-top">
+            <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H10l-4 3v-3H4z"/><path d="M10 9.2a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6 1"/><path d="M12 14h.01"/></svg></span>
+            <span class="tag">ask</span>
+            <h3>Ask the human, then wait</h3>
+            <p>It stops at decisions that are yours to make, and waits for your answer.</p>
+          </div>
+          <pre><span class="p">$ </span>clankerinbox ask "Use Postgres or SQLite?" \
+    --option Postgres --option SQLite --wait
+<span class="ok">✓</span> Reply from you@example.org
+<span class="k">SQLite</span></pre>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="1.5"/><path d="M7.5 12h.01M12 12h.01M16.5 12h.01"/></svg></span>
+            <span class="tag">code</span>
+            <h3>Sign up, skip the mail</h3>
+            <p>It signs up for tools by itself, with a fresh address every time.</p>
+          </div>
+          <pre><span class="p">$ </span>clankerinbox address
+signup+s1a2b3c4d5@mail.example.com
+<span class="p">$ </span>clankerinbox code --tag s1a2b3c4d5 \
+    --from github.com --wait
+<span class="ok">✓</span> Found the code
+<span class="k">482913</span></pre>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14"/><path d="M21 3l-7 18-4-7-7-4z"/></svg></span>
+            <span class="tag">send</span>
+            <h3>Tell you it's done</h3>
+            <p>You get a mail when the work is done. Reply to keep it going.</p>
+          </div>
+          <pre><span class="p">$ </span>clankerinbox send --subject "Goal finished" \
+    --text "All 12 items done. PR is up."
+<span class="ok">✓</span> Sent to you@example.org <span class="o">· thread q1a2b3c4d5</span></pre>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="12" r="3.2"/><path d="M14.2 9v4.2a2 2 0 0 0 3.8.6A8 8 0 1 0 14 19.5"/></svg></span>
+            <span class="tag">create</span>
+            <h3>An address per agent</h3>
+            <p>Give every agent its own address on your domain.</p>
+          </div>
+          <pre><span class="p">$ </span>clankerinbox create billing
+<span class="ok">✓</span> Made billing@mail.example.com <span class="o">(inbox billing, mode answers)</span></pre>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 2.5h6l1-2.5h5"/></svg></span>
+            <span class="tag">poll</span>
+            <h3>Email your agent a task</h3>
+            <p>Send it new work from your phone. Follow-ups stay in one thread.</p>
+          </div>
+          <pre><span class="p">$ </span>clankerinbox poll
+<span class="b">→</span> Request r7f2a91c3e from you@example.org: Fix the login bug
+<span class="ok">✓</span> Reply to q4c7c52dbdd from you@example.org: Ship it</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></span>
+            <span class="tag">log</span>
+            <h3>Check what it sent</h3>
+            <p>A full history of every mail, kept on your machine.</p>
+          </div>
+          <pre><span class="p">$ </span>clankerinbox log --thread q4c7c52dbdd
+Thread q4c7c52dbdd
+  <span class="o">14:02</span>  → you@example.org: Ship the release?
+  <span class="o">14:09</span>  ← you@example.org: Re: Ship the release?</pre>
+        </article>
+
+      </div>
+      <div class="car-dots" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section id="safe" class="safe">
+    <div class="wrap">
+      <div class="head">
+        <h2>safe by default</h2>
+        <p>An inbox lets strangers talk to your agent. That's why the rules run in the CLI on your machine, the same on both providers.</p>
+      </div>
+      <div class="safe-grid">
+      <div class="win gate" style="box-shadow:none;background:var(--bg)">
+        <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span>agent@mail.example.com</span><span class="right">4 mails, 1 gets in</span></div>
+        <div class="gate-rows">
+          <div class="gate-row no"><span class="x">✗</span><span class="who">stranger@evil.example</span><span class="why">sender not on allowlist</span></div>
+          <div class="gate-row no"><span class="x">✗</span><span class="who">you@example.org</span><span class="why">DMARC did not pass aligned</span></div>
+          <div class="gate-row no"><span class="x">✗</span><span class="who">noreply@newsletter.example</span><span class="why">automated mail</span></div>
+          <div class="gate-row yes"><span class="v">✓</span><span class="who">you@example.org</span><span class="why">answer: Ship it</span></div>
+        </div>
+      </div>
+      <div class="rules">
+        <div class="rule"><span class="tag">in</span><h3>You pick who gets a say</h3><p>Add yourself, a teammate, anyone. Everyone else is ignored, and so is spoofed mail.</p></div>
+        <div class="rule"><span class="tag">out</span><h3>It mails who you allow</h3><p>It can't email strangers, and an hourly cap stops it from flooding you.</p></div>
+        <div class="rule"><span class="tag">codes</span><h3>It only gets the code</h3><p>A sign-up mail can't give your agent instructions.</p></div>
+        <div class="rule"><span class="tag">rules</span><h3>A mail never approves anything</h3><p>Only a reply to an open question counts as an answer.</p></div>
+      </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="providers">
+    <div class="wrap">
+      <div class="head">
+        <h2>bring your own provider</h2>
+        <p>Mail runs on your account and your domain, with your keys. Setup connects it all for you.</p>
+      </div>
+      <div class="two">
+        <article class="card"><div class="card-top">
+          <span class="tag gold">api</span>
+          <h3>PostShiba</h3>
+          <p>An email API on your own domain. Setup creates the inboxes and checks your DNS.</p>
+        </div></article>
+        <article class="card"><div class="card-top">
+          <span class="tag gold">free</span>
+          <h3>Cloudflare</h3>
+          <p>For a domain on Cloudflare. Setup deploys a Worker on your account.</p>
+        </div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="final" id="install" style="border-top:1px solid var(--line)">
+    <div class="wrap">
+      <svg class="bot" viewBox="0 0 20 15" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="0" width="1.02" height="1.02" fill="var(--gold)"/><rect x="6" y="1" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="2" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="3" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="3" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="4" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="5" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="8" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="9" y="4" width="1.02" height="1.02" fill="var(--green)"/><rect x="11" y="4" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="5" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="5" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="8" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="9" y="5" width="1.02" height="1.02" fill="var(--green)"/><rect x="11" y="5" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="6" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="6" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="7" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="8" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="9" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="16" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="17" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="18" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="19" y="9" width="1.02" height="1.02" fill="var(--title)"/><rect x="1" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="2" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="11" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="12" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="13" y="10" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="10" width="1.02" height="1.02" fill="var(--bg)"/><rect x="16" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="17" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="18" y="10" width="1.02" height="1.02" fill="var(--bg)"/><rect x="19" y="10" width="1.02" height="1.02" fill="var(--title)"/><rect x="1" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="11" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="16" y="11" width="1.02" height="1.02" fill="var(--bg)"/><rect x="17" y="11" width="1.02" height="1.02" fill="var(--bg)"/><rect x="18" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="19" y="11" width="1.02" height="1.02" fill="var(--title)"/><rect x="1" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="5" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="6" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="7" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="8" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="12" width="1.02" height="1.02" fill="var(--blue)"/><rect x="14" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="15" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="16" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="17" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="18" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="19" y="12" width="1.02" height="1.02" fill="var(--title)"/><rect x="3" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="13" width="1.02" height="1.02" fill="var(--blue)"/><rect x="3" y="14" width="1.02" height="1.02" fill="var(--blue)"/><rect x="4" y="14" width="1.02" height="1.02" fill="var(--blue)"/><rect x="9" y="14" width="1.02" height="1.02" fill="var(--blue)"/><rect x="10" y="14" width="1.02" height="1.02" fill="var(--blue)"/></svg>
+      <h2>Three commands and your agent has an inbox.</h2>
+      <p>Setup ends with a test mail to you, so you know it works.</p>
+      <div class="win">
+        <div class="win-bar"><span class="dots"><i></i><i></i><i></i></span><span>install</span><button class="copy right" type="button" data-copy="install-end">copy</button></div>
+        <pre id="install-end"><span class="p">$ </span>git clone https://github.com/ClankerInbox/clankerinbox ~/clankerinbox
+<span class="p">$ </span>cd ~/clankerinbox &amp;&amp; npm install -g .
+<span class="p">$ </span>clankerinbox setup</pre>
+      </div>
+      <div class="cta">
+        <a class="btn" href="https://github.com/ClankerInbox/clankerinbox#readme">Read the README</a>
+        <a class="btn" href="https://github.com/ClankerInbox/clankerinbox">Source on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>clankerinbox · open source, built by <a class="link" href="https://x.com/dannypostma">Danny Postma</a></span>
+    <nav>
+      <a class="link" href="https://github.com/ClankerInbox/clankerinbox#readme">docs</a>
+      <a class="link" href="https://github.com/ClankerInbox/clankerinbox">github</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.copy').forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    var text = document.getElementById(btn.dataset.copy).innerText.replace(/^\$ /gm, '');
+    navigator.clipboard.writeText(text).then(function () {
+      btn.textContent = 'copied';
+      btn.classList.add('done');
+      setTimeout(function () { btn.textContent = 'copy'; btn.classList.remove('done'); }, 1500);
+    });
+  });
+});
+
+(function () {
+  var track = document.querySelector('#features .grid'), dots = document.querySelector('.car-dots');
+  if (!track || !dots) return;
+  var cards = track.children;
+  for (var i = 0; i < cards.length; i++) dots.appendChild(document.createElement('i'));
+  function mark() {
+    var mid = track.scrollLeft + track.clientWidth / 2, best = 0, d = Infinity;
+    for (var i = 0; i < cards.length; i++) {
+      var c = Math.abs(cards[i].offsetLeft - track.offsetLeft + cards[i].offsetWidth / 2 - mid);
+      if (c < d) { d = c; best = i; }
+    }
+    for (var j = 0; j < dots.children.length; j++) dots.children[j].classList.toggle('on', j === best);
+  }
+  track.addEventListener('scroll', mark, { passive: true });
+  mark();
+})();
+</script>
+</body>
+</html>
