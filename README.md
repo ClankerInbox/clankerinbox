@@ -16,10 +16,12 @@ Email for coding agents. Your agent asks you a question by email, waits for your
 Needs Node.js 22.18 or newer (on 23, 23.6 or newer).
 
 ```sh
-npm install -g git+https://github.com/ClankerInbox/clankerinbox.git
+npm install -g clankerinbox
 ```
 
-Or from a clone, which `git pull` updates:
+To try it without installing: `npx clankerinbox setup`.
+
+Or from a clone, to work on the code:
 
 ```sh
 git clone https://github.com/ClankerInbox/clankerinbox ~/clankerinbox
